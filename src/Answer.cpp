@@ -8,9 +8,12 @@
 //------------------------------------------------------------------------------
 
 #include "Answer.hpp"
+#include <iostream>
 #include <vector>
+#include <stdlib.h>
+
 hpc::Vector2 target;
-double* distance_map;
+double* distance_map = nullptr;
 
 //------------------------------------------------------------------------------
 namespace hpc {
@@ -42,7 +45,7 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
             min = map[x + i + (y + j) * Parameter::StageWidth] < min ? map[(x + i) + (y + j) * Parameter::StageWidth] : min;
         }
     }
-    enum hpc::Terrain now_ground = aStage.terrain(Vector2(static_cast<float>(x), static_cast<float>(y)));
+    hpc::Terrain now_ground = aStage.terrain(Vector2(static_cast<float>(x), static_cast<float>(y)));
     if(now_ground == hpc::Terrain::Plain)
     {
         add_point = 1.0;
@@ -69,11 +72,13 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
     int y = start_point / Parameter::StageWidth;
     for(int i = 1; ; ++i)
     {
-        if(x + i > 49 && x - i < 0 && y + i < 0 && i + y > 49) break;
+        if(x + i > 49 && x - i < 0 && y - i < 0 && i + y > 49) break;
         if(x - i >= 0)
         {
             for(int j = y - i; j < y + i; ++j)
             {
+                if(j < 0) j = 0;
+                else if(j > 49) break;
                 around_minimam(x - i, j, map, aStage);
             }
         }
@@ -81,6 +86,8 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
         {
             for(int j = y - i; j < y + i; ++j)
             {
+                if(j < 0) j = 0;
+                else if(j > 49) break;
                 around_minimam(x + i, j, map, aStage);
             }
         }
@@ -88,6 +95,8 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
         {
             for(int j = x - i; j < x + i; ++j)
             {
+                if(j < 0) j = 0;
+                else if(j > 49) break;
                 around_minimam(j, y - i, map, aStage);
             }
         }
@@ -95,38 +104,41 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
         {
             for(int j = x - i; j < x + i; ++j)
             {
+                if(j < 0) j = 0;
+                else if(j > 49) break;
                 around_minimam(j, y + i, map, aStage);
             }
         }
     }
 }
 
-Vector2 setTarget(const Stage& stage)
+Vector2 setTarget(const Stage& aStage)
 {
     Vector2 result;
     double min;
-    int start_pos = stage.rabbit().pos().x + stage.rabbit().pos().y * Parameter::StageWidth;
-    distance_map = new double(Parameter::StageHeight * Parameter::StageWidth);
-    for(int i = 0; i < Parameter::StageHeight * Parameter::StageWidth;++i)distance_map[i] = 1000.0; 
-    std::vector<hpc::Scroll> scrolls;
-    std::vector<double> scrolls_distance;
-    for(auto itr = stage.scrolls().begin(); itr != stage.scrolls().end(); ++itr)
+    std::vector<hpc::Vector2> scrolls;
+    int start_pos = static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth;
+    if(distance_map != nullptr) delete[] distance_map;
+    distance_map = new double[Parameter::StageHeight * Parameter::StageWidth];
+    for(int i = 0; i < Parameter::StageHeight * Parameter::StageWidth;++i)distance_map[i] = 1000.0;
+    for(auto itr = aStage.scrolls().begin(); itr != aStage.scrolls().end(); ++itr)
     {
         if(!(itr->isGotten()))
         {
-            scrolls.push_back(*itr);
+            Vector2 tmp = Vector2(itr->pos().x, itr->pos().y);
+            scrolls.push_back(tmp);
         }
     }
     distance_map[start_pos] = 0.0;
-    calc_distance(stage, distance_map, start_pos);
-    result = scrolls.begin()->pos();
-    min = distance_map[static_cast<int>(scrolls.begin()->pos().x) + static_cast<int>(scrolls.begin()->pos().y) * Parameter::StageWidth];
-    for(auto itr = scrolls.begin() + 1; itr != scrolls.end(); ++itr)
+    calc_distance(aStage, distance_map, start_pos);
+    result = Vector2(scrolls.begin()->x, scrolls.begin()->y);
+    min = distance_map[static_cast<int>(scrolls.begin()->x) + static_cast<int>(scrolls.begin()->y) * Parameter::StageWidth];
+    for(auto itr = scrolls.begin(); itr != scrolls.end(); ++itr)
     {
-        double tmp = distance_map[static_cast<int>(itr->pos().x) + static_cast<int>(itr->pos().y) * Parameter::StageWidth];
+        double tmp = distance_map[static_cast<int>(itr->x) + static_cast<int>(itr->y) * Parameter::StageWidth];
         if(tmp < min)
         {
-            result = itr->pos();
+            result = *itr;
             min = tmp;
         }
     }
@@ -155,7 +167,7 @@ Vector2 Answer::getTargetPos(const Stage& aStage)
         target = setTarget(aStage);
     }
 
-    return pos;
+    return target;
 }
 
 //------------------------------------------------------------------------------
