@@ -52,7 +52,7 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
     }
     else if(now_ground == hpc::Terrain::Bush)
     {
-        add_point = 1.5;
+        add_point = 1.7;
     }
     else if(now_ground == hpc::Terrain::Sand)
     {
@@ -60,7 +60,7 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
     }
     else
     {
-        add_point = 10.0;
+        add_point = 5.0;
     }
     
     map[x + Parameter::StageWidth * y] = min + add_point;
@@ -82,6 +82,15 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
                 around_minimam(x - i, j, map, aStage);
             }
         }
+        if(y + i < 50)
+        {
+            for(int j = x + i; j >= x - i; --j)
+            {
+                if(j > 49) j = 49;
+                else if(j < 0) break;
+                around_minimam(j, y + i, map, aStage);
+            }
+        }
         if(x + i < 50)
         {
             for(int j = y - i; j < y + i; ++j)
@@ -98,15 +107,6 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
                 if(j < 0) j = 0;
                 else if(j > 49) break;
                 around_minimam(j, y - i, map, aStage);
-            }
-        }
-        if(y + i < 50)
-        {
-            for(int j = x - i; j < x + i; ++j)
-            {
-                if(j < 0) j = 0;
-                else if(j > 49) break;
-                around_minimam(j, y + i, map, aStage);
             }
         }
     }
