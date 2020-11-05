@@ -10,7 +10,7 @@
 #include "Answer.hpp"
 #include <iostream>
 #include <vector>
-#include <stdlib.h>
+#include <cmath>
 
 hpc::Vector2 target;
 double* distance_map = nullptr;
@@ -131,6 +131,7 @@ Vector2 setTarget(const Stage& aStage)
     }
     distance_map[start_pos] = 0.0;
     calc_distance(aStage, distance_map, start_pos);
+    calc_distance(aStage, distance_map, start_pos);
     result = Vector2(scrolls.begin()->x, scrolls.begin()->y);
     min = distance_map[static_cast<int>(scrolls.begin()->x) + static_cast<int>(scrolls.begin()->y) * Parameter::StageWidth];
     for(auto itr = scrolls.begin(); itr != scrolls.end(); ++itr)
@@ -142,6 +143,68 @@ Vector2 setTarget(const Stage& aStage)
             min = tmp;
         }
     }
+    calc_distance(aStage, distance_map, static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth);
+    return result;
+}
+
+bool is_reachble(int x, int y, float jump_length, Vector2 now_pos)
+{
+    bool result = false;
+    if(std::pow(static_cast<double>(x) - now_pos.x, 2.0) + std::pow(static_cast<double>(y) - now_pos.y, 2.0) <= std::pow(jump_length, 2.0))
+    {
+        result = true;
+    }
+    else if(std::pow(static_cast<double>(x + 1) - now_pos.x, 2.0) + std::pow(static_cast<double>(y) - now_pos.y, 2.0) <= std::pow(jump_length, 2.0))
+    {
+        result = true;
+    }
+    else if(std::pow(static_cast<double>(x) - now_pos.x, 2.0) + std::pow(static_cast<double>(y + 1) - now_pos.y, 2.0) <= std::pow(jump_length, 2.0))
+    {
+        result = true;
+    }
+    else if(std::pow(static_cast<double>(x + 1) - now_pos.x, 2.0) + std::pow(static_cast<double>(y + 1) - now_pos.y, 2.0) <= std::pow(jump_length, 2.0))
+    {
+        result = true;
+    }
+    return result;
+}
+
+Vector2 next_jump_point(const Stage& aStage)
+{
+    Vector2 now_point = aStage.rabbit().pos();
+    float power = aStage.rabbit().power();
+    double min;
+    Vector2 result;
+    std::vector<std::pair<double, Vector2>> list;
+    int min_x = static_cast<int>(now_point.x - power);
+    int max_x = static_cast<int>(now_point.x + power);
+    int min_y = static_cast<int>(now_point.y - power);
+    int max_y = static_cast<int>(now_point.y + power);
+    if(min_x < 0) min_x = 0;
+    if(max_x > 49) max_x = 49;
+    if(min_y < 0) min_y = 0;
+    if(max_y > 49) max_y = 49;
+    for(int i = min_x; i <= max_x; ++i)
+    {
+        for(int j = min_y; j <= max_y; ++j)
+        {
+            if(is_reachble(i, j, power, now_point))
+            {
+                list.push_back(std::pair<double, Vector2>(distance_map[j + i * Parameter::StageWidth], Vector2(i, j)));
+            }
+        }
+    }
+    min = list.at(0).first;
+    result = list.at(0).second;
+    for(auto itr = list.begin(); itr != list.end(); ++itr)
+    {
+        if(min > itr->first)
+        {
+            min = itr->first;
+            result = itr->second;
+        }
+    }
+    result = Vector2(result.x + 0.5, result.y + 0.5);
     return result;
 }
 
@@ -162,12 +225,13 @@ void Answer::initialize(const Stage& aStage)
 Vector2 Answer::getTargetPos(const Stage& aStage)
 {
     auto pos = aStage.rabbit().pos();
+    Vector2 result;
     if(static_cast<int>(pos.x) == static_cast<int>(target.x) && static_cast<int>(pos.y) == static_cast<int>(target.y))
     {
         target = setTarget(aStage);
     }
-
-    return target;
+    result = next_jump_point(aStage);
+    return result;
 }
 
 //------------------------------------------------------------------------------
