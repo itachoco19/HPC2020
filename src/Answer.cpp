@@ -6,35 +6,37 @@
 /// @attention  このファイルの利用は、同梱のREADMEにある
 ///             利用条件に従ってください。
 //------------------------------------------------------------------------------
-
+ 
 #include "Answer.hpp"
 #include <iostream>
 #include <vector>
 #include <cmath>
-
+ 
+#define INF 10000000.0
+ 
 hpc::Vector2 target;
 double* distance_map = nullptr;
-
+ 
 //------------------------------------------------------------------------------
 namespace hpc {
-
+ 
 //------------------------------------------------------------------------------
 /// コンストラクタ
 /// @detail 最初のステージ開始前に実行したい処理があればここに書きます
 Answer::Answer()
 {
 }
-
+ 
 //------------------------------------------------------------------------------
 /// デストラクタ
 /// @detail 最後のステージ終了後に実行したい処理があればここに書きます
 Answer::~Answer()
 {
 }
-
+ 
 void around_minimam(int x, int y, double* map, const Stage& aStage)
 {
-    double min = 900.0;
+    double min = INF;
     double add_point;
     for(int i = -1; i < 2; ++i)
     {
@@ -48,11 +50,11 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
     hpc::Terrain now_ground = aStage.terrain(Vector2(static_cast<float>(x), static_cast<float>(y)));
     if(now_ground == hpc::Terrain::Plain)
     {
-        add_point = 1.0;
+        add_point = 0.0;
     }
     else if(now_ground == hpc::Terrain::Bush)
     {
-        add_point = 1.7;
+        add_point = 1.6;
     }
     else if(now_ground == hpc::Terrain::Sand)
     {
@@ -62,15 +64,15 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
     {
         add_point = 5.0;
     }
-    
+     
     map[x + Parameter::StageWidth * y] = min + add_point;
 }
-
+ 
 void calc_distance(const Stage& aStage, double* map, int start_point)
 {
     int x = start_point % Parameter::StageWidth;
     int y = start_point / Parameter::StageWidth;
-    for(int i = 1; ; ++i)
+    for(int i = 0; ; ++i)
     {
         if(x + i > 49 && x - i < 0 && y - i < 0 && i + y > 49) break;
         if(x - i >= 0)
@@ -111,7 +113,7 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
         }
     }
 }
-
+ 
 Vector2 setTarget(const Stage& aStage)
 {
     Vector2 result;
@@ -120,7 +122,7 @@ Vector2 setTarget(const Stage& aStage)
     int start_pos = static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth;
     if(distance_map != nullptr) delete[] distance_map;
     distance_map = new double[Parameter::StageHeight * Parameter::StageWidth];
-    for(int i = 0; i < Parameter::StageHeight * Parameter::StageWidth;++i)distance_map[i] = 1000.0;
+    for(int i = 0; i < Parameter::StageHeight * Parameter::StageWidth;++i)distance_map[i] = INF;
     for(auto itr = aStage.scrolls().begin(); itr != aStage.scrolls().end(); ++itr)
     {
         if(!(itr->isGotten()))
@@ -130,7 +132,6 @@ Vector2 setTarget(const Stage& aStage)
         }
     }
     distance_map[start_pos] = 0.0;
-    calc_distance(aStage, distance_map, start_pos);
     calc_distance(aStage, distance_map, start_pos);
     result = Vector2(scrolls.begin()->x, scrolls.begin()->y);
     min = distance_map[static_cast<int>(scrolls.begin()->x) + static_cast<int>(scrolls.begin()->y) * Parameter::StageWidth];
@@ -143,10 +144,15 @@ Vector2 setTarget(const Stage& aStage)
             min = tmp;
         }
     }
+    for(int i = 0; i < Parameter::StageWidth * Parameter::StageHeight; ++i)
+    {
+        distance_map[i] = INF;
+    }
+    distance_map[static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth] = 0.0;
     calc_distance(aStage, distance_map, static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth);
     return result;
 }
-
+ 
 bool is_reachble(int x, int y, float jump_length, Vector2 now_pos)
 {
     bool result = false;
@@ -168,7 +174,7 @@ bool is_reachble(int x, int y, float jump_length, Vector2 now_pos)
     }
     return result;
 }
-
+ 
 Vector2 next_jump_point(const Stage& aStage)
 {
     Vector2 now_point = aStage.rabbit().pos();
@@ -190,7 +196,7 @@ Vector2 next_jump_point(const Stage& aStage)
         {
             if(is_reachble(i, j, power, now_point))
             {
-                list.push_back(std::pair<double, Vector2>(distance_map[j + i * Parameter::StageWidth], Vector2(i, j)));
+                list.push_back(std::pair<double, Vector2>(distance_map[i + j * Parameter::StageWidth], Vector2(i, j)));
             }
         }
     }
@@ -207,7 +213,7 @@ Vector2 next_jump_point(const Stage& aStage)
     result = Vector2(result.x + 0.5, result.y + 0.5);
     return result;
 }
-
+ 
 //------------------------------------------------------------------------------
 /// 各ステージ開始時に呼び出される処理
 /// @detail 各ステージに対する初期化処理が必要ならここに書きます
@@ -216,7 +222,7 @@ void Answer::initialize(const Stage& aStage)
 {
     target = setTarget(aStage);
 }
-
+ 
 //------------------------------------------------------------------------------
 /// 毎フレーム呼び出される処理
 /// @detail 移動先を決定して返します
@@ -233,7 +239,7 @@ Vector2 Answer::getTargetPos(const Stage& aStage)
     result = next_jump_point(aStage);
     return result;
 }
-
+ 
 //------------------------------------------------------------------------------
 /// 各ステージ終了時に呼び出される処理
 /// @detail 各ステージに対する終了処理が必要ならここに書きます
@@ -241,6 +247,6 @@ Vector2 Answer::getTargetPos(const Stage& aStage)
 void Answer::finalize(const Stage& aStage)
 {
 }
-
+ 
 } // namespace
 // EOF
