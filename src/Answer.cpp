@@ -16,6 +16,7 @@
  
 hpc::Vector2 target;
 double* distance_map = nullptr;
+int counter;
  
 //------------------------------------------------------------------------------
 namespace hpc {
@@ -25,6 +26,7 @@ namespace hpc {
 /// @detail 最初のステージ開始前に実行したい処理があればここに書きます
 Answer::Answer()
 {
+    counter = 0;
 }
  
 //------------------------------------------------------------------------------
@@ -33,7 +35,12 @@ Answer::Answer()
 Answer::~Answer()
 {
 }
- 
+
+void map_initialize(double* map, int mapsize)
+{
+    for(int i = 0; i < mapsize; ++i) map[i] = INF;
+}
+
 void around_minimam(int x, int y, double* map, const Stage& aStage)
 {
     double min = INF;
@@ -50,11 +57,11 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
     hpc::Terrain now_ground = aStage.terrain(Vector2(static_cast<float>(x), static_cast<float>(y)));
     if(now_ground == hpc::Terrain::Plain)
     {
-        add_point = 0.0;
+        add_point = 1.0;
     }
     else if(now_ground == hpc::Terrain::Bush)
     {
-        add_point = 1.6;
+        add_point = 1.7;
     }
     else if(now_ground == hpc::Terrain::Sand)
     {
@@ -62,16 +69,16 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
     }
     else
     {
-        add_point = 5.0;
+        add_point = 10.0;
     }
      
     map[x + Parameter::StageWidth * y] = min + add_point;
 }
- 
-void calc_distance(const Stage& aStage, double* map, int start_point)
+
+void counter_clockwise(const Stage& aStage, double* map, int start_x, int start_y)
 {
-    int x = start_point % Parameter::StageWidth;
-    int y = start_point / Parameter::StageWidth;
+    int x = start_x;
+    int y = start_y;
     for(int i = 0; ; ++i)
     {
         if(x + i > 49 && x - i < 0 && y - i < 0 && i + y > 49) break;
@@ -86,11 +93,49 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
         }
         if(y + i < 50)
         {
-            for(int j = x + i; j >= x - i; --j)
+            for(int j = x - i; j < x + i; ++j)
+            {
+                if(j < 0) j = 0;
+                else if(j > 49) break;
+                around_minimam(j, y + i, map, aStage);
+            }
+        }
+        if(x + i < 50)
+        {
+            for(int j = y + i - 1; j >= y - i; --j)
             {
                 if(j > 49) j = 49;
                 else if(j < 0) break;
-                around_minimam(j, y + i, map, aStage);
+                around_minimam(x + i, j, map, aStage);
+            }
+        }
+        if(y - i >= 0)
+        {
+            for(int j = x + i - 1; j >= x - i; --j)
+            {
+                if(j > 49) j = 49;
+                else if(j < 0) break;
+                around_minimam(j, y - i, map, aStage);
+            }
+        }
+    }
+}
+
+void clockwise(const Stage& aStage, double* map, const int start_x, const int start_y)
+{
+    int x = start_x;
+    int y = start_y;
+    for(int i = 0; ; ++i)
+    {
+        if(x + i > 49 && x - i < 0 && y - i < 0 && i + y > 49) break;
+        
+        if(y - i >= 0)
+        {
+            for(int j = x - i; j < x + i; ++j)
+            {
+                if(j < 0) j = 0;
+                else if(j > 49) break;
+                around_minimam(j, y - i, map, aStage);
             }
         }
         if(x + i < 50)
@@ -102,16 +147,69 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
                 around_minimam(x + i, j, map, aStage);
             }
         }
-        if(y - i >= 0)
+        if(y + i < 50)
         {
-            for(int j = x - i; j < x + i; ++j)
+            for(int j = x + i - 1; j >= x - i; --j)
             {
-                if(j < 0) j = 0;
-                else if(j > 49) break;
-                around_minimam(j, y - i, map, aStage);
+                if(j > 49) j = 49;
+                else if(j < 0) break;
+                around_minimam(j, y + i, map, aStage);
+            }
+        }
+        if(x - i >= 0)
+        {
+            for(int j = y + i - 1; j >= y - i; --j)
+            {
+                if(j > 49) j = 49;
+                else if(j < 0) break;
+                around_minimam(x - i, j, map, aStage);
             }
         }
     }
+}
+
+void calc_distance(const Stage& aStage, double* map, int start_point)
+{
+    int x = start_point % Parameter::StageWidth;
+    int y = start_point / Parameter::StageWidth;
+    int maplength = Parameter::StageWidth * Parameter::StageHeight;
+    double* clockwise_map = new double[Parameter::StageHeight * Parameter::StageWidth];
+    double* counter_clockwise_map = new double[Parameter::StageWidth * Parameter::StageHeight];
+    map_initialize(clockwise_map, Parameter::StageHeight * Parameter::StageWidth);
+    map_initialize(counter_clockwise_map, Parameter::StageWidth * Parameter::StageHeight);
+    clockwise_map[x + y * Parameter::StageWidth] = 0.0;
+    counter_clockwise_map[x + y * Parameter::StageWidth] = 0.0;
+    counter_clockwise(aStage, counter_clockwise_map, x, y);
+    clockwise(aStage, clockwise_map, x, y);
+    for(int i = 0; i < maplength; ++i)
+    {
+        if(clockwise_map[i] < counter_clockwise_map[i])
+        {
+            map[i] = clockwise_map[i];
+        }
+        else
+        {
+            map[i] = counter_clockwise_map[i];
+        }
+        
+    }
+    delete[] clockwise_map;
+    delete[] counter_clockwise_map;
+}
+
+void create_distance_map(const Stage& aStage, int target_x, int target_y)
+{
+    int stage_length = Parameter::StageWidth * Parameter::StageHeight;
+    double* map1 = new double[stage_length];
+    map_initialize(map1, stage_length);
+    ++counter;
+    for(int i = 0; i < stage_length; ++i)
+    {
+        calc_distance(aStage, map1, i);
+        distance_map[i] = map1[target_x + target_y * Parameter::StageWidth];
+        map_initialize(map1, stage_length);
+    }
+    delete[] map1;
 }
  
 Vector2 setTarget(const Stage& aStage)
@@ -148,8 +246,9 @@ Vector2 setTarget(const Stage& aStage)
     {
         distance_map[i] = INF;
     }
-    distance_map[static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth] = 0.0;
-    calc_distance(aStage, distance_map, static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth);
+    //distance_map[static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth] = 0.0;
+    //calc_distance(aStage, distance_map, static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth);
+    create_distance_map(aStage, static_cast<int>(result.x), static_cast<int>(result.y));
     return result;
 }
  
