@@ -201,15 +201,17 @@ void create_distance_map(const Stage& aStage, int target_x, int target_y)
 {
     int stage_length = Parameter::StageWidth * Parameter::StageHeight;
     double* map1 = new double[stage_length];
+    double* map2 = new double[stage_length];
     map_initialize(map1, stage_length);
-    ++counter;
+    map_initialize(map2, stage_length);
+    calc_distance(aStage, map1, target.x + target_y * Parameter::StageWidth);
+    calc_distance(aStage, map2, static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth);
     for(int i = 0; i < stage_length; ++i)
     {
-        calc_distance(aStage, map1, i);
-        distance_map[i] = map1[target_x + target_y * Parameter::StageWidth];
-        map_initialize(map1, stage_length);
+        distance_map[i] = (map1[i] + map2[i]);
     }
     delete[] map1;
+    delete[] map2;
 }
  
 Vector2 setTarget(const Stage& aStage)
