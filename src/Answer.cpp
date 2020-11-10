@@ -16,7 +16,6 @@
  
 hpc::Vector2 target;
 double* distance_map = nullptr;
-int counter;
  
 //------------------------------------------------------------------------------
 namespace hpc {
@@ -26,7 +25,6 @@ namespace hpc {
 /// @detail 最初のステージ開始前に実行したい処理があればここに書きます
 Answer::Answer()
 {
-    counter = 0;
 }
  
 //------------------------------------------------------------------------------
@@ -50,8 +48,10 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
         if(x + i < 0 || x + i > 49) continue;
         for(int j = -1; j < 2; ++j)
         {
+            double correction = 1.5;
             if(y + j < 0 || y + j > 49) continue;
-            min = map[x + i + (y + j) * Parameter::StageWidth] < min ? map[(x + i) + (y + j) * Parameter::StageWidth] : min;
+            if(j == 0 || i == 0) correction = 1.0;
+            min = map[x + i + (y + j) * Parameter::StageWidth] * correction < min ? map[(x + i) + (y + j) * Parameter::StageWidth] * correction : min;
         }
     }
     hpc::Terrain now_ground = aStage.terrain(Vector2(static_cast<float>(x), static_cast<float>(y)));
@@ -61,7 +61,7 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
     }
     else if(now_ground == hpc::Terrain::Bush)
     {
-        add_point = 1.7;
+        add_point = 1.5;
     }
     else if(now_ground == hpc::Terrain::Sand)
     {
@@ -72,7 +72,7 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
         add_point = 10.0;
     }
      
-    map[x + Parameter::StageWidth * y] = min + add_point;
+    map[x + Parameter::StageWidth * y] = (min + add_point);
 }
 
 void counter_clockwise(const Stage& aStage, double* map, int start_x, int start_y)
@@ -181,17 +181,20 @@ void calc_distance(const Stage& aStage, double* map, int start_point)
     counter_clockwise_map[x + y * Parameter::StageWidth] = 0.0;
     counter_clockwise(aStage, counter_clockwise_map, x, y);
     clockwise(aStage, clockwise_map, x, y);
-    for(int i = 0; i < maplength; ++i)
+    int start = static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth;
+    if(clockwise_map[start] < counter_clockwise_map[start])
     {
-        if(clockwise_map[i] < counter_clockwise_map[i])
+        for(int i = 0; i < maplength; ++i)
         {
             map[i] = clockwise_map[i];
         }
-        else
+    }
+    else
+    {
+        for(int i = 0; i < maplength; ++i)
         {
             map[i] = counter_clockwise_map[i];
         }
-        
     }
     delete[] clockwise_map;
     delete[] counter_clockwise_map;
@@ -201,17 +204,14 @@ void create_distance_map(const Stage& aStage, int target_x, int target_y)
 {
     int stage_length = Parameter::StageWidth * Parameter::StageHeight;
     double* map1 = new double[stage_length];
-    double* map2 = new double[stage_length];
     map_initialize(map1, stage_length);
-    map_initialize(map2, stage_length);
+    map1[target_x + target_y * Parameter::StageWidth] = 0.0;
     calc_distance(aStage, map1, target.x + target_y * Parameter::StageWidth);
-    calc_distance(aStage, map2, static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth);
     for(int i = 0; i < stage_length; ++i)
     {
-        distance_map[i] = (map1[i] + map2[i]);
+        distance_map[i] = map1[i];
     }
     delete[] map1;
-    delete[] map2;
 }
  
 Vector2 setTarget(const Stage& aStage)
@@ -248,9 +248,9 @@ Vector2 setTarget(const Stage& aStage)
     {
         distance_map[i] = INF;
     }
-    //distance_map[static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth] = 0.0;
-    //calc_distance(aStage, distance_map, static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth);
-    create_distance_map(aStage, static_cast<int>(result.x), static_cast<int>(result.y));
+    distance_map[static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth] = 0.0;
+    calc_distance(aStage, distance_map, static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth);
+    //create_distance_map(aStage, static_cast<int>(result.x), static_cast<int>(result.y));
     return result;
 }
  
