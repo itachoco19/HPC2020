@@ -48,7 +48,7 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
         if(x + i < 0 || x + i > 49) continue;
         for(int j = -1; j < 2; ++j)
         {
-            double correction = 1.5;
+            double correction = 1.2;
             if(y + j < 0 || y + j > 49) continue;
             if(j == 0 || i == 0) correction = 1.0;
             min = map[x + i + (y + j) * Parameter::StageWidth] * correction < min ? map[(x + i) + (y + j) * Parameter::StageWidth] * correction : min;
@@ -168,10 +168,10 @@ void clockwise(const Stage& aStage, double* map, const int start_x, const int st
     }
 }
 
-void calc_distance(const Stage& aStage, double* map, int start_point)
+void calc_distance(const Stage& aStage, double* map, int start_x, int start_y)
 {
-    int x = start_point % Parameter::StageWidth;
-    int y = start_point / Parameter::StageWidth;
+    int x = start_x;
+    int y = start_y;
     int maplength = Parameter::StageWidth * Parameter::StageHeight;
     double* clockwise_map = new double[Parameter::StageHeight * Parameter::StageWidth];
     double* counter_clockwise_map = new double[Parameter::StageWidth * Parameter::StageHeight];
@@ -205,8 +205,8 @@ void create_distance_map(const Stage& aStage, int target_x, int target_y)
     int stage_length = Parameter::StageWidth * Parameter::StageHeight;
     double* map1 = new double[stage_length];
     map_initialize(map1, stage_length);
-    map1[target_x + target_y * Parameter::StageWidth] = 0.0;
-    calc_distance(aStage, map1, target.x + target_y * Parameter::StageWidth);
+    map1[target_x + target_y * Parameter::StageWidth] = 5.0;
+    calc_distance(aStage, map1, target_x, target_y);
     for(int i = 0; i < stage_length; ++i)
     {
         distance_map[i] = map1[i];
@@ -231,8 +231,8 @@ Vector2 setTarget(const Stage& aStage)
             scrolls.push_back(tmp);
         }
     }
-    distance_map[start_pos] = 0.0;
-    calc_distance(aStage, distance_map, start_pos);
+    distance_map[start_pos] = 5.0;
+    calc_distance(aStage, distance_map, start_pos % Parameter::StageWidth, start_pos / Parameter::StageWidth);
     result = Vector2(scrolls.begin()->x, scrolls.begin()->y);
     min = distance_map[static_cast<int>(scrolls.begin()->x) + static_cast<int>(scrolls.begin()->y) * Parameter::StageWidth];
     for(auto itr = scrolls.begin(); itr != scrolls.end(); ++itr)
@@ -248,9 +248,7 @@ Vector2 setTarget(const Stage& aStage)
     {
         distance_map[i] = INF;
     }
-    distance_map[static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth] = 0.0;
-    calc_distance(aStage, distance_map, static_cast<int>(result.x) + static_cast<int>(result.y) * Parameter::StageWidth);
-    //create_distance_map(aStage, static_cast<int>(result.x), static_cast<int>(result.y));
+    create_distance_map(aStage, static_cast<int>(result.x), static_cast<int>(result.y));
     return result;
 }
  
@@ -279,7 +277,25 @@ bool is_reachble(int x, int y, float jump_length, Vector2 now_pos)
 Vector2 next_jump_point(const Stage& aStage)
 {
     Vector2 now_point = aStage.rabbit().pos();
-    float power = aStage.rabbit().power();
+    hpc::Terrain ground = aStage.terrain(aStage.rabbit().pos());
+    float ground_effect;
+    if(ground == Terrain::Plain)
+    {
+        ground_effect = 1.0;
+    }
+    else if(ground == Terrain::Bush)
+    {
+        ground_effect = 0.6;
+    }
+    else if(ground == Terrain::Sand)
+    {
+        ground_effect = 0.3;
+    }
+    else
+    {
+        ground_effect = 0.1;
+    }
+    float power = aStage.rabbit().power() * ground_effect;
     double min;
     Vector2 result;
     std::vector<std::pair<double, Vector2>> list;
@@ -291,6 +307,18 @@ Vector2 next_jump_point(const Stage& aStage)
     if(max_x > 49) max_x = 49;
     if(min_y < 0) min_y = 0;
     if(max_y > 49) max_y = 49;
+    int now_x = static_cast<int>(now_point.x);
+    int now_y = static_cast<int>(now_point.y);
+    for(int i = -1; i < 2; ++i)
+    {
+        if(now_x + i > 49 || now_x + i < 0) continue;
+        for(int j = -1; j < 2; ++j)
+        {
+            if(static_cast<int>(now_point.y) + j > 49 || static_cast<int>(now_point.y) + j < 0) continue;
+            //if(i == 0 && j == 0)break;
+            list.push_back(std::pair<double, Vector2>(distance_map[now_x + i + (now_y+j) * Parameter::StageWidth], Vector2(now_x + i, now_y + j)));
+        }
+    }
     for(int i = min_x; i <= max_x; ++i)
     {
         for(int j = min_y; j <= max_y; ++j)
