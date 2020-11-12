@@ -204,12 +204,22 @@ void create_distance_map(const Stage& aStage, int target_x, int target_y)
 {
     int stage_length = Parameter::StageWidth * Parameter::StageHeight;
     double* map1 = new double[stage_length];
+    double max = 0.0;
+    int now_point = static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth;
     map_initialize(map1, stage_length);
     map1[target_x + target_y * Parameter::StageWidth] = 5.0;
     calc_distance(aStage, map1, target_x, target_y);
+    max = map1[now_point];
     for(int i = 0; i < stage_length; ++i)
     {
-        distance_map[i] = map1[i];
+        if(map1[now_point] <= max)
+        {
+            distance_map[i] = map1[i];
+        }
+        else
+        {
+            distance_map[i] = INF;
+        }
     }
     delete[] map1;
 }
@@ -273,7 +283,19 @@ bool is_reachble(int x, int y, float jump_length, Vector2 now_pos)
     }
     return result;
 }
- 
+
+void create_list(const Stage& aStage)
+{
+    double* map = new double[Parameter::StageHeight * Parameter::StageWidth];
+    for(auto itr = aStage.scrolls().begin(); itr != aStage.scrolls().end(); ++itr)
+    {
+        Vector2 pos = itr->pos();
+        map_initialize(map, Parameter::StageWidth * Parameter::StageHeight);
+        calc_distance(aStage, map, static_cast<int>(pos.x), static_cast<int>(pos.y));
+    }
+    delete[] map;
+}
+
 Vector2 next_jump_point(const Stage& aStage)
 {
     Vector2 now_point = aStage.rabbit().pos();
