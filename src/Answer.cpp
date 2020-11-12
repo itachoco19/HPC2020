@@ -284,16 +284,31 @@ bool is_reachble(int x, int y, float jump_length, Vector2 now_pos)
     return result;
 }
 
-void create_list(const Stage& aStage)
+std::vector<int> create_list(const Stage& aStage)
 {
     double* map = new double[Parameter::StageHeight * Parameter::StageWidth];
+    double* distance = new double[(Parameter::MaxScrollCount + 1) * Parameter::MaxScrollCount];
+    std::vector<int> result;
+    map_initialize(map, Parameter::StageWidth * Parameter::StageHeight);
+    calc_distance(aStage, map, static_cast<int>(aStage.rabbit().pos().x), static_cast<int>(aStage.rabbit().pos().y));
     for(auto itr = aStage.scrolls().begin(); itr != aStage.scrolls().end(); ++itr)
     {
-        Vector2 pos = itr->pos();
+        distance[std::distance(aStage.scrolls().begin(), itr)] = map[static_cast<int>(itr->pos().x) + static_cast<int>(itr->pos().y) * Parameter::StageWidth];
+    }
+    for(int i = 0; i < aStage.scrolls().count(); ++i)
+    {
+        Vector2 pos = aStage.scrolls()[i].pos();
         map_initialize(map, Parameter::StageWidth * Parameter::StageHeight);
         calc_distance(aStage, map, static_cast<int>(pos.x), static_cast<int>(pos.y));
+        for(auto it = aStage.scrolls().begin(); it != aStage.scrolls().end(); ++it)
+        {
+            int position = static_cast<int>(it->pos().x) + static_cast<int>(it->pos().y) * Parameter::StageWidth;
+
+        }
     }
     delete[] map;
+    delete[] distance;
+    return result;
 }
 
 Vector2 next_jump_point(const Stage& aStage)
