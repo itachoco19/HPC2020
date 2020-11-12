@@ -48,7 +48,7 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
         if(x + i < 0 || x + i > 49) continue;
         for(int j = -1; j < 2; ++j)
         {
-            double correction = 1.2;
+            double correction = 1.1;
             if(y + j < 0 || y + j > 49) continue;
             if(j == 0 || i == 0) correction = 1.0;
             min = map[x + i + (y + j) * Parameter::StageWidth] * correction < min ? map[(x + i) + (y + j) * Parameter::StageWidth] * correction : min;
@@ -61,7 +61,7 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
     }
     else if(now_ground == hpc::Terrain::Bush)
     {
-        add_point = 1.5;
+        add_point = 1.3;
     }
     else if(now_ground == hpc::Terrain::Sand)
     {
@@ -177,24 +177,22 @@ void calc_distance(const Stage& aStage, double* map, int start_x, int start_y)
     double* counter_clockwise_map = new double[Parameter::StageWidth * Parameter::StageHeight];
     map_initialize(clockwise_map, Parameter::StageHeight * Parameter::StageWidth);
     map_initialize(counter_clockwise_map, Parameter::StageWidth * Parameter::StageHeight);
-    clockwise_map[x + y * Parameter::StageWidth] = 0.0;
-    counter_clockwise_map[x + y * Parameter::StageWidth] = 0.0;
+    clockwise_map[x + y * Parameter::StageWidth] = 1.0;
+    counter_clockwise_map[x + y * Parameter::StageWidth] = 1.0;
     counter_clockwise(aStage, counter_clockwise_map, x, y);
     clockwise(aStage, clockwise_map, x, y);
-    int start = static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth;
-    if(clockwise_map[start] < counter_clockwise_map[start])
+    //int start = static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth;
+    for(int i = 0; i < maplength; ++i)
     {
-        for(int i = 0; i < maplength; ++i)
+        if(clockwise_map[i] < counter_clockwise_map[i])
         {
             map[i] = clockwise_map[i];
         }
-    }
-    else
-    {
-        for(int i = 0; i < maplength; ++i)
+        else
         {
             map[i] = counter_clockwise_map[i];
         }
+        
     }
     delete[] clockwise_map;
     delete[] counter_clockwise_map;
@@ -207,7 +205,6 @@ void create_distance_map(const Stage& aStage, int target_x, int target_y)
     double max = 0.0;
     int now_point = static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth;
     map_initialize(map1, stage_length);
-    map1[target_x + target_y * Parameter::StageWidth] = 5.0;
     calc_distance(aStage, map1, target_x, target_y);
     max = map1[now_point];
     for(int i = 0; i < stage_length; ++i)
@@ -302,8 +299,7 @@ std::vector<int> create_list(const Stage& aStage)
         calc_distance(aStage, map, static_cast<int>(pos.x), static_cast<int>(pos.y));
         for(auto it = aStage.scrolls().begin(); it != aStage.scrolls().end(); ++it)
         {
-            int position = static_cast<int>(it->pos().x) + static_cast<int>(it->pos().y) * Parameter::StageWidth;
-
+            //int position = static_cast<int>(it->pos().x) + static_cast<int>(it->pos().y) * Parameter::StageWidth;
         }
     }
     delete[] map;
