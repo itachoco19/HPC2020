@@ -47,10 +47,10 @@ void around_minimam(int x, int y, double* map, const Stage& aStage)
 {
     double min = INF;
     double add_point;
-    for(int i = -1; i < 2; ++i)
+    for(int i = -1; i <= 1; ++i)
     {
         if(x + i < 0 || x + i > 49) continue;
-        for(int j = -1; j < 2; ++j)
+        for(int j = -1; j <= 1; ++j)
         {
             double correction = std::sqrt(1.25);
             if(y + j < 0 || y + j > 49) continue;
@@ -264,8 +264,11 @@ void calc_distance(const Stage& aStage, double* map, int start_x, int start_y)
     map_initialize(counter_clockwise_map, Parameter::StageWidth * Parameter::StageHeight);
     clockwise_map[x + y * Parameter::StageWidth] = 1.0;
     counter_clockwise_map[x + y * Parameter::StageWidth] = 1.0;
-    counter_clockwise(aStage, counter_clockwise_map, x, y);
-    clockwise(aStage, clockwise_map, x, y);
+    for(int i = 0; i < 2; ++i)
+    {
+        counter_clockwise(aStage, counter_clockwise_map, x, y);
+        clockwise(aStage, clockwise_map, x, y);
+    }
     for(int i = 0; i < maplength; ++i)
     {
         if(clockwise_map[i] < counter_clockwise_map[i])
@@ -287,10 +290,14 @@ void create_distance_map(const Stage& aStage, int target_x, int target_y)
 {
     int stage_length = Parameter::StageWidth * Parameter::StageHeight;
     double* map1 = new double[stage_length];
+    //double* map2 = new double[stage_length];
     double max = 0.0;
     int now_point = static_cast<int>(aStage.rabbit().pos().x) + static_cast<int>(aStage.rabbit().pos().y) * Parameter::StageWidth;
     map_initialize(map1, stage_length);
+    //map_initialize(map2, stage_length);
     calc_distance(aStage, map1, target_x, target_y);
+    //calc_distance(aStage, map2, static_cast<int>(aStage.rabbit().pos().x), static_cast<int>(aStage.rabbit().pos().y));
+    
     max = map1[now_point];
     
     for(int i = 0; i < stage_length; ++i)
@@ -306,6 +313,7 @@ void create_distance_map(const Stage& aStage, int target_x, int target_y)
     }
     
     delete[] map1;
+    //delete[] map2;
 }
  
 Vector2 setTarget(const Stage& aStage)
@@ -425,10 +433,10 @@ std::vector<int> yakinamashi(const Stage& aStage, int points_count, double* aDis
     }
     result = point;
     before = turn;
-    for(temp = heat; temp >= 0.1; temp *= 0.999)
+    for(temp = heat; temp >= 0.1; temp *= 0.99999)
     {
         turn = 0.0;
-        double diff = heat / 10.0;
+        double diff = heat / 100.0;
         for(double T = temp; T >= 0.0; T -= diff)
         {
             int lh = rnd.randMinMax(0, points_count - 1);
@@ -456,7 +464,7 @@ std::vector<int> yakinamashi(const Stage& aStage, int points_count, double* aDis
             result = point;
             continue;
         }
-        if(std::exp((turn - before) / temp) < rnd.randFloat())
+        if(std::exp((turn - before) - temp) < rnd.randFloat())
         {
             before = turn;
             result = point;
